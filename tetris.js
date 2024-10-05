@@ -1,23 +1,26 @@
 const canvas = document.getElementById("tetris");
 const context = canvas.getContext("2d");
 
-const grid = 32; // Updated block size for better visibility
+const grid = 32;
 const tetrominoSequence = [];
 
-// Define the shapes and their colors
+// Define tetromino shapes and their colors
 const tetrominoes = {
     'I': [
+        [0, 0, 0, 0],
         [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
     ],
     'J': [
-        [0, 1],
-        [0, 1],
-        [1, 1],
+        [1, 0, 0],
+        [1, 1, 1],
+        [0, 0, 0],
     ],
     'L': [
-        [1, 0],
-        [1, 0],
-        [1, 1],
+        [0, 0, 1],
+        [1, 1, 1],
+        [0, 0, 0],
     ],
     'O': [
         [1, 1],
@@ -26,14 +29,17 @@ const tetrominoes = {
     'Z': [
         [1, 1, 0],
         [0, 1, 1],
+        [0, 0, 0],
     ],
     'S': [
         [0, 1, 1],
         [1, 1, 0],
+        [0, 0, 0],
     ],
     'T': [
         [0, 1, 0],
         [1, 1, 1],
+        [0, 0, 0],
     ],
 };
 
@@ -47,32 +53,23 @@ const colors = {
     'T': 'purple',
 };
 
-// The playfield is a 10x20 grid of squares
+// Initialize the playfield
 const playfield = [];
 
-// Populate the empty playfield with 0's
+// Populate the playfield with 0's
 for (let row = 0; row < 20; row++) {
     playfield[row] = [];
-
     for (let col = 0; col < 10; col++) {
         playfield[row][col] = 0;
     }
 }
 
-// Object to store the current tetromino
-let tetromino = getNextTetromino();
-
-// Object to store the coordinates of the current tetromino
-let tetrominoX = 3;  // Adjusted to center the tetromino
-let tetrominoY = 0;  // Start at the top
-
-// Get a random tetromino from the sequence
+// Get the next tetromino from the sequence
 function getNextTetromino() {
     if (tetrominoSequence.length === 0) {
         Object.keys(tetrominoes).forEach(tetromino => {
             tetrominoSequence.push(tetromino);
         });
-
         shuffle(tetrominoSequence);
     }
 
@@ -82,7 +79,7 @@ function getNextTetromino() {
     return { name, matrix };
 }
 
-// Rotate the tetromino matrix (90 degrees clockwise)
+// Rotate tetromino matrix
 function rotate(matrix) {
     const N = matrix.length;
     const rotatedMatrix = [];
@@ -97,42 +94,24 @@ function rotate(matrix) {
     return rotatedMatrix;
 }
 
-// Modify rotation to check for boundaries and collisions
-function rotateTetromino() {
-    const rotatedMatrix = rotate(tetromino.matrix);
-
-    // Check if the rotated tetromino would go out of bounds or collide
-    if (isValidMove(rotatedMatrix, tetrominoY, tetrominoX)) {
-        tetromino.matrix = rotatedMatrix;
-    } else {
-        // Try moving the tetromino left or right to fit after rotation
-        const offset = tetrominoX > 5 ? -1 : 1;
-        if (isValidMove(rotatedMatrix, tetrominoY, tetrominoX + offset)) {
-            tetrominoX += offset;
-            tetromino.matrix = rotatedMatrix;
-        }
-    }
-}
-
-// Check for collisions with the playfield
+// Check for valid moves
 function isValidMove(matrix, cellRow, cellCol) {
     for (let row = 0; row < matrix.length; row++) {
         for (let col = 0; col < matrix[row].length; col++) {
             if (matrix[row][col] && (
-                cellCol + col < 0 ||
-                cellCol + col >= 10 ||
-                cellRow + row >= 20 ||
+                cellCol + col < 0 || 
+                cellCol + col >= 10 || 
+                cellRow + row >= 20 || 
                 playfield[cellRow + row][cellCol + col])
             ) {
                 return false;
             }
         }
     }
-
     return true;
 }
 
-// Add the tetromino to the playfield
+// Place tetromino onto the playfield
 function placeTetromino() {
     for (let row = 0; row < tetromino.matrix.length; row++) {
         for (let col = 0; col < tetromino.matrix[row].length; col++) {
@@ -142,7 +121,7 @@ function placeTetromino() {
         }
     }
 
-    // Check for line clears
+    // Clear full rows
     for (let row = 19; row >= 0;) {
         if (playfield[row].every(cell => !!cell)) {
             playfield.splice(row, 1);
@@ -184,13 +163,40 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Game loop
-let count = 0;
+// Fix rotate function for all tetrominoes
+function rotateTetromino() {
+    const rotatedMatrix = rotate(tetromino.matrix);
 
+    // If valid, rotate
+    if (isValidMove(rotatedMatrix, tetrominoY, tetrominoX)) {
+        tetromino.matrix = rotatedMatrix;
+    } else {
+        // Handle bounds and wall kicks for all tetrominoes
+        const offset = tetrominoX > 5 ? -1 : 1;
+        if (isValidMove(rotatedMatrix, tetrominoY, tetrominoX + offset)) {
+            tetrominoX += offset;
+            tetromino.matrix = rotatedMatrix;
+        }
+    }
+}
+
+// Shuffle tetrominoes
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// Start the game loop
+let tetromino = getNextTetromino();
+let tetrominoX = 3;
+let tetrominoY = 0;
+
+let count = 0;
 function loop() {
     requestAnimationFrame(loop);
 
-    // Move tetromino down every 35 frames
     if (++count < 35) {
         return;
     }
@@ -205,7 +211,6 @@ function loop() {
         tetrominoY = newY;
     }
 
-    // Clear canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw the playfield
@@ -214,7 +219,6 @@ function loop() {
             if (playfield[row][col]) {
                 const name = playfield[row][col];
                 context.fillStyle = colors[name];
-
                 context.fillRect(col * grid, row * grid, grid - 1, grid - 1);
             }
         }
@@ -226,18 +230,15 @@ function loop() {
     for (let row = 0; row < tetromino.matrix.length; row++) {
         for (let col = 0; col < tetromino.matrix[row].length; col++) {
             if (tetromino.matrix[row][col]) {
-                context.fillRect((tetrominoX + col) * grid, (tetrominoY + row) * grid, grid - 1, grid - 1);
+                context.fillRect(
+                    (tetrominoX + col) * grid,
+                    (tetrominoY + row) * grid,
+                    grid - 1,
+                    grid - 1
+                );
             }
         }
     }
 }
 
 loop();
-
-// Shuffle tetrominoes array
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-}
